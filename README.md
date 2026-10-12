@@ -1,5 +1,9 @@
 # SP Raja Personal Portfolio and Services Website
 
+## Architecture
+
+See [the architecture document](ARCHITECTURE.md) for system diagrams, the enquiry flow, hosting, and the proposed customer account design.
+
 ## Project Overview
 
 SP Raja is a personal portfolio and services website for Rajakokila Muralitharan. It introduces her computing studies, data analysis projects, public-sector experience, and services available for discussion.
