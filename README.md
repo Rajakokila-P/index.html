@@ -16,7 +16,13 @@ Built with HTML, CSS, and JavaScript, it presents education, experience, a corre
 - GitHub repository: https://github.com/Rajakokila-P/index.html
 - Portfolio: https://github.com/Rajakokila-P
 
-The live website is hosted through Sites. GitHub Pages is an additional hosting option; it is not confirmed enabled for this repository.
+The existing live website is hosted through Sites. The upgraded customer portal targets GitHub Pages with a Supabase backend. See [backend activation](BACKEND-SETUP.md). Until connected, the portal shows a clear unavailable message and does not collect passwords.
+
+## Customer portal upgrade
+
+The repository now includes registration, email verification, sign-in, password recovery, a customer dashboard, validated enquiry submission, database row-level security, and an email notification queue. This implementation still needs a connected Supabase project, Resend sender setup, and hosted integration tests before customer accounts can go live.
+
+The GitHub Actions workflow runs tests before deployment. Enable **GitHub Actions** in repository **Settings → Pages** once; subsequent successful pushes to `main` deploy automatically. This pipeline does not update the separate Sites-hosted copy.
 
 ## Project Purpose and Target Audience
 
@@ -72,11 +78,11 @@ The site uses responsive CSS grids, mobile navigation, visible form labels, focu
 - The footer year updates automatically.
 - LinkedIn, Facebook, X, GitHub, and PDF links are available.
 
-Customer registration, email/password authentication, and password recovery are not implemented. These require a supported authentication service and further setup.
+The portal implements customer registration, email verification, password recovery and a dashboard using the Supabase SDK. Real accounts remain disabled until the provider is configured. Enquiries are saved through a database function that verifies the customer, validates the content, limits request frequency and creates a notification atomically. The existing homepage email-draft form remains a contact fallback.
 
 ## Technologies Used
 
-HTML5, CSS3, JavaScript, GitHub, and Sites hosting. The downloadable CV was generated with ReportLab and visually reviewed after rendering with Poppler.
+HTML5, CSS3, JavaScript, Supabase Auth/PostgreSQL, an Edge Function for Resend, esbuild, Playwright, PGlite, GitHub Actions, and GitHub Pages. The existing website is hosted through Sites. The downloadable CV was generated with ReportLab and visually reviewed after rendering with Poppler.
 
 ## Folder Structure
 
@@ -85,6 +91,15 @@ index.html/
 ├── index.html
 ├── style.css
 ├── script.js
+├── portal.html
+├── portal.css
+├── config.json
+├── src/portal.js
+├── scripts/
+├── tests/
+├── supabase/
+├── .github/workflows/pages.yml
+├── BACKEND-SETUP.md
 ├── README.md
 ├── .nojekyll
 └── assets/
@@ -103,11 +118,14 @@ index.html/
 | Downloadable PDF excludes the street address | Passed |
 | CV PDF contains two pages and renders legibly | Both pages visually reviewed |
 | Sites production deployment | Succeeded |
-| Browser checks at desktop, tablet, and mobile widths | Not completed; browser tooling unavailable |
+| Browser checks at desktop, tablet, and mobile widths | Passed at 390, 820, and 1440 pixels in headless Edge |
+| Registration, verification, recovery, dashboard and sign-out | Browser flows passed with mocked backend responses |
+| Per-user database isolation, validation, rate limits and idempotency | Passed with embedded PostgreSQL |
+| Email notification authentication, acceptance and retry handling | Passed with mocked email provider |
 | W3C HTML/CSS validation and automated accessibility audit | Not completed |
 | GitHub Pages live deployment | Not confirmed |
 
-These checks do not establish end-to-end browser behaviour. Before relying on the site for customer enquiries, check navigation, form validation, email draft creation, the PDF download, and the mobile menu in your browser. No screenshot evidence or validator results from another project are claimed for this website.
+The local suite passed 33 browser checks and 11 backend tests. Auth and email responses were mocked in browser/worker tests; no real verification, recovery or enquiry email was sent. Hosted Supabase integration and actual delivery still need verification after connection. Browser evidence is generated in `test-results/` and retained by the CI workflow. No validator results from another project are claimed.
 
 ## Changes and Corrections
 
@@ -115,7 +133,18 @@ The public contact section now has clickable telephone and email links and the s
 
 ## Local Preview
 
-Open `index.html` in a browser or serve the repository with a static web server. No dependency installation or build step is required.
+Use Node.js 24 and pnpm 11.25.0:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm test
+pnpm run build
+pnpm exec playwright install chromium
+pnpm run test:browser
+pnpm run preview
+```
+
+The preview is available at `http://127.0.0.1:4173`. The build bundles the authentication SDK locally and copies only public website assets into `dist/`.
 
 ## Deployment
 
@@ -125,9 +154,9 @@ To use GitHub Pages:
 
 1. Open this repository's **Settings**.
 2. Select **Pages** under **Code and automation**.
-3. Choose **Deploy from a branch**.
-4. Select **main** and **/ (root)**, then save.
-5. Wait for GitHub to show the published URL and open it to verify the result.
+3. Choose **GitHub Actions** as the publishing source.
+4. Run **Test and deploy portfolio** from the Actions tab, or push a commit to `main`.
+5. Wait for tests and deployment to succeed, then open the URL reported by GitHub.
 
 Keep `index.html`, CSS, JavaScript, and `assets/` together so relative links continue to work.
 
@@ -139,10 +168,10 @@ The monogram, flag, and illustrative project graphics are constructed with HTML,
 
 ## Future Improvements
 
-- A secure server-backed enquiry form with delivery confirmation
-- Customer accounts through a supported authentication provider
-- Password recovery if an email/password provider is selected
-- Browser testing across mobile, tablet, and desktop
+- Connect Supabase and a verified email sender, then run hosted integration tests
+- Confirm GitHub Pages configuration and successful automatic deployment
+- Add an owner-facing administration interface if needed
+- Add CAPTCHA integration if required for public registration
 - HTML/CSS validation and automated accessibility checks
 
 ## Author

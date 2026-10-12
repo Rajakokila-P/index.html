@@ -1,0 +1,4 @@
+# The notification worker authenticates its own server-to-server shared secret.
+# It never accepts customer session tokens or unauthenticated requests.
+[functions.notify-enquiries]
+verify_jwt = false

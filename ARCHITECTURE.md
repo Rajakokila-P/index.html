@@ -1,153 +1,98 @@
 # SP Raja Portfolio Architecture
 
-This document describes the portfolio's implemented architecture and a proposed extension for customer accounts. The current website is a static application: the visitor's browser displays the content and runs its interactions.
+The GitHub version contains a public portfolio and a customer portal backed by Supabase, with enquiry notifications through Resend. Source and local tests are complete; hosted authentication and email are **not activated**. See [activation instructions](BACKEND-SETUP.md).
 
-## Current system
+## Application architecture
 
 ```mermaid
 flowchart TB
-    Visitor["Visitor<br/>Customer, employer or collaborator"]
-    Sites["Sites hosting<br/>Public website"]
-    Browser["Visitor's browser"]
-    HTML["index.html<br/>Content and form"]
-    CSS["style.css<br/>Layout and responsive design"]
-    JS["script.js<br/>Menu, service selection and email draft"]
-    PDF["assets/SP-Raja-CV.pdf<br/>CV download"]
-    Email["Visitor's email application"]
-    Inbox["SP Raja's email inbox"]
-    Profiles["GitHub projects, LinkedIn, Facebook and X"]
-    Visitor -->|"Opens website"| Sites
-    Sites -->|"Serves static files over HTTPS"| Browser
-    Browser --> HTML
-    Browser --> CSS
-    Browser --> JS
-    Browser -->|"View or download"| PDF
-    JS -->|"mailto: opens a draft"| Email
-    Email -->|"Visitor presses Send"| Inbox
-    Browser -->|"External links"| Profiles
+    Visitor[Visitor] --> Pages[GitHub Pages]
+    Pages --> Public[Public portfolio and CV]
+    Pages --> Portal[Customer portal]
+    Portal --> Auth[Supabase Auth]
+    Auth --> SMTP[Verified SMTP sender]
+    SMTP --> Email[Verification and recovery emails]
+    Portal -->|Verified customer session| API[Supabase database API]
+    API -->|Validated submission function| DB[(Customer enquiries)]
+    API -->|Own records only: row-level security| DB
+    DB -->|Same transaction| Queue[(Private notification queue)]
+    Cron[Scheduled worker] --> Queue
+    Cron --> Resend[Resend email API]
+    Resend --> Owner[Owner inbox]
 ```
 
-There is no application server, customer database, or account system in the current project. Form details are used in the browser to prepare an email draft; the site does not save them. Email delivery depends on the visitor's configured email application and their decision to send.
+The public portfolio remains available without an account. It contains education, experience, projects, a corrected CV sample, six services, and approved contact/social links. The street address is excluded. The original public enquiry form opens an email draft; customers can use the separate portal for saved, tracked enquiries once activated.
 
-## Information architecture
-
-The website is one HTML page with section links, rather than separate pages.
-
-```mermaid
-flowchart LR
-    Home["Introduction"]
-    About["About"]
-    Journey["Education and experience"]
-    Work["Selected projects"]
-    CV["CV sample and PDF"]
-    Services["Services"]
-    Contact["Contact and enquiry"]
-    Home --> About --> Journey --> Work --> CV --> Services --> Contact
-    Services --> Web["Website design"]
-    Services --> Docs["Documents"]
-    Services --> Dash["Dashboards"]
-    Services --> Cyber["Cyber analysis"]
-    Services --> Data["Data analysis"]
-    Services --> Network["Network analysis"]
-```
-
-Selecting a service takes the visitor to the contact section and selects that service in the enquiry form.
-
-## Components and responsibilities
+## Components
 
 | Component | Responsibility |
 | --- | --- |
-| `index.html` | Profile, education, experience, projects, CV sample, services, social links, and labelled form fields |
-| `style.css` | Colours, typography, grid layouts, mobile breakpoints, focus indicators, and reduced-motion support |
-| `script.js` | Mobile menu state, Escape handling, service selection, form validation, email draft creation, and footer year |
-| `assets/SP-Raja-CV.pdf` | Two-page CV available for viewing and downloading |
-| `.nojekyll` | Allows the exported project to be served as plain static files on GitHub Pages |
-| `README.md` | Overview, design rationale, features, verification status, and deployment instructions |
+| index.html, style.css, script.js | Public portfolio, responsive navigation, services and email-draft fallback |
+| portal.html, portal.css, src/portal.js | Registration, sign-in, verification resend, recovery, protected dashboard and enquiries |
+| Supabase Auth | Password handling, verified email identity and sessions |
+| Database migration | Enquiry validation, ownership rules, idempotency, submission limits and notification queue |
+| notify-enquiries function | Authenticated server worker, email dispatch and retry handling |
+| Scheduled database job | Calls the notification worker every five minutes |
+| config.json | Public backend URL and publishable key; empty until activation |
+| Build scripts | Bundle the browser SDK and copy only public files into dist |
+| GitHub Actions workflow | Tests, browser checks, build and Pages deployment |
 
-The contact form uses browser validation for required fields and email format. Its success message explains that an email draft was requested; it does not claim the enquiry was delivered.
-
-## Enquiry flow
+## Customer and enquiry flow
 
 ```mermaid
 sequenceDiagram
-    actor Visitor
-    participant Page as Portfolio page
-    participant Mail as Email application
-    participant Inbox as SP Raja inbox
-    Visitor->>Page: Choose a service
-    Page->>Page: Select service in contact form
-    Visitor->>Page: Enter name, email and message
-    Page->>Page: Validate required fields and email format
-    alt Fields are valid
-        Page->>Mail: Request draft using mailto
-        Page-->>Visitor: Explain that sending happens in email app
-        opt Email app opens and visitor chooses Send
-            Visitor->>Mail: Send message
-            Mail->>Inbox: Deliver through email provider
-        end
-    else Fields are invalid
-        Page-->>Visitor: Show browser validation message
-    end
+    actor Customer
+    participant Portal
+    participant Auth as Supabase Auth
+    participant DB as Database
+    participant Worker as Email worker
+    Customer->>Portal: Register with email and password
+    Portal->>Auth: Create account
+    Auth-->>Customer: Send verification email through configured SMTP
+    Customer->>Auth: Verify email and sign in
+    Portal->>Auth: Validate current user
+    Customer->>Portal: Submit service enquiry
+    Portal->>DB: Submit with session and request ID
+    DB->>DB: Verify identity, validate and save enquiry plus queue item
+    DB-->>Portal: Saved enquiry reference
+    Portal-->>Customer: Show saved enquiry in dashboard
+    Worker->>DB: Claim pending notifications with leases
+    Worker->>Worker: Send owner notification through Resend
+    Worker->>DB: Mark provider acceptance or schedule retry
 ```
 
-## Source and deployment
+Saving an enquiry and queue entry is atomic. Repeating a request with the same ID and content does not create duplicates. Email failure does not remove the saved enquiry. Provider acceptance is recorded separately from customer submission; it does not prove inbox delivery. After eight unsuccessful attempts, the owner must investigate and requeue deliberately.
+
+## Access and privacy
+
+- Database row-level security restricts customers to their own enquiries. Browser visibility is not the security boundary.
+- Customers cannot write directly to tables, change enquiry status, or read the notification queue. The submission function verifies the confirmed account email, validates data, and limits each customer to five enquiries per hour.
+- Only the server worker has access to notification processing functions. It checks a separate server secret before accessing the queue.
+- Browser configuration contains only public connection settings. Service credentials and email keys belong in server secret storage.
+- Customer sessions use tab-scoped session storage. Sign-out clears displayed records. Untrusted enquiry text is rendered as text, not HTML.
+- The owner manages records through the authenticated Supabase dashboard. A custom owner administration interface is not included.
+- Without backend configuration, the portal displays contact alternatives and does not collect passwords.
+
+## Deployment
 
 ```mermaid
 flowchart LR
-    Local["Website working files"]
-    Review["Review and checks"]
-    GitHub["GitHub repository<br/>Rajakokila-P/index.html"]
-    Package["Sites publication package"]
-    Live["Live Sites website"]
-    Pages["GitHub Pages<br/>Optional additional deployment"]
-    Local --> Review
-    Review -->|"Upload current export"| GitHub
-    Review -->|"Package current source"| Package
-    Package -->|"Explicit publication"| Live
-    GitHub -.->|"Enable in repository Settings → Pages"| Pages
+    Source[GitHub source] --> Tests[Database and notification tests]
+    Tests --> Browser[Browser tests]
+    Browser --> Build[Production build]
+    Build --> Artifact[Public dist artifact]
+    Artifact --> Pages[GitHub Pages]
+    Setup[Separate backend setup] --> Supabase[Supabase migrations and worker]
+    Setup --> Mail[Verified email provider]
 ```
 
-- **Live site:** https://rajak-personal-portfolio.wise-wasp-0659.chatgpt.site/
-- **GitHub repository:** https://github.com/Rajakokila-P/index.html
-- The Sites project serves its configured `dist` directory.
-- The GitHub export places the same public website files at the repository root.
-- GitHub and Sites are separate publication destinations. Updating GitHub does not currently update the Sites website automatically.
-- GitHub Pages is an optional hosting destination; its activation has not been verified.
+Set GitHub Pages source to **GitHub Actions** once. Thereafter, pushes to main use the workflow; failed checks block deployment. Backend migrations, SMTP configuration and worker deployment are separate setup steps described in BACKEND-SETUP.md.
 
-## Public information and access
+The existing [Sites-hosted portfolio](https://rajak-personal-portfolio.wise-wasp-0659.chatgpt.site/) is a separate publication. This workflow updates the GitHub Pages version and does not synchronise the Sites copy.
 
-Visitors can browse the public website without signing in. The downloadable CV and website omit the street address. The owner-approved phone number, email address, and social links remain public.
+## Verification and remaining activation
 
-The GitHub export contains current website files and the corrected CV. Original CV documents, recordings, the course handbook, hosting credentials, and previous Sites source history are not part of that export.
+Local verification passed 33 browser checks and 11 database/notification tests. Browser auth and provider responses are simulated; database permissions are exercised against the actual migration in embedded PostgreSQL. See [testing details](TESTING.md).
 
-## Proposed customer account architecture
+Live signup, SMTP delivery, recovery links, hosted row-level security and notification delivery must still be tested after connecting Supabase and Resend and configuring a verified sending domain. No production accounts or emails were created during local testing.
 
-**Future design only — these components have not been implemented.** A supported authentication and hosting arrangement must be selected before adding email/password registration and recovery.
-
-```mermaid
-flowchart TB
-    Customer["Customer browser"]
-    Public["Public portfolio and services"]
-    Auth["Managed identity service<br/>Registration, sign-in, email verification and recovery"]
-    Portal["Customer portal"]
-    API["Server API<br/>Validate identity and permissions"]
-    DB["Customer and enquiry database"]
-    Notify["Transactional email service"]
-    Admin["SP Raja administration area"]
-    Customer --> Public
-    Customer --> Auth
-    Auth -->|"Authenticated session"| Portal
-    Portal -->|"Authenticated requests"| API
-    API -->|"Authorised records only"| DB
-    API -->|"Enquiry notifications"| Notify
-    Admin -->|"Authorised administration requests"| API
-    Auth -->|"Verification or recovery email"| Customer
-```
-
-The future server would verify the identity and ownership of every customer record before returning or changing it. The identity provider would manage passwords and recovery; browser code would not store passwords or service secrets. The administration area would require an owner role checked by the server.
-
-A future enquiry form would submit to the server and show confirmation only after the enquiry is saved or accepted. This differs from the current email-draft workflow and requires backend implementation and testing.
-
-## Verification status
-
-The current JavaScript syntax, section links, service count, contact targets, and CV availability were checked. Both PDF pages were visually inspected, and Sites confirmed successful publication. Full browser interaction, responsive-layout, and automated accessibility testing remain outstanding.
