@@ -1,11 +1,11 @@
 # Project coding rules
 
-- Keep the website static and free of paid API dependencies, backend accounts and API keys.
-- Do not restore the CV, personal document downloads, account forms or visitor-data storage without the owner's request.
-- Preserve the existing visual design, public contact details and project descriptions unless asked to change them.
-- Never invent employment history, qualifications, project links or verification results.
-- Keep email-draft wording accurate: a draft is not a sent message.
-- Maintain accessible labels, keyboard focus, reduced-motion support and narrow-screen layouts.
-- Run `npm test`, `npm run build` and syntax checks after changes. Browser checks use optional Playwright tooling; the site itself has no package dependencies.
-- Keep current verification distinct from historical claims and live deployment checks.
-- Do not deploy or alter external accounts unless the owner requests it.
+- Real Supabase Free accounts are explicitly authorised for personal exploration. Do not enable paid plans, paid email, SMS, subscriptions or new billable infrastructure.
+- Keep the CV and its PDF/download links removed.
+- Use the official SDK, public publishable keys only, verified server-side users and safe text rendering. Never use user-editable metadata as access control.
+- Preserve the shared Supabase project's other site, users, data and settings. No schema changes are required for this dashboard.
+- Describe email sending limits truthfully. Never claim a draft/request proves delivery.
+- Preserve the portfolio's existing content unless the owner asks for changes.
+- Edit src/ and run npm test and npm run build. Commit the generated root portal.js for Pages branch publishing; never hand-edit it.
+- Keep simulated checks separate from real account/email and visual verification. No fake production accounts.
+- Do not deploy or change external accounts beyond the owner's requested scope.

@@ -12,24 +12,26 @@ test('CV section and download are removed', async () => {
   assert.doesNotMatch(html, /#cv|SP-Raja-CV|Download CV|CURRICULUM VITAE/);
   await assert.rejects(access('assets/SP-Raja-CV.pdf'));
 });
-test('runtime is independent of backend services and packages', async () => {
+test('homepage stays independent of account requests', async () => {
   const script = await readFile('script.js', 'utf8');
   assert.doesNotMatch(script, /fetch\(|XMLHttpRequest|supabase|resend|localStorage|sessionStorage/i);
   assert.doesNotMatch(html, /<script[^>]+src="https?:/);
   const pkg = JSON.parse(await readFile('package.json','utf8'));
-  assert.equal(Object.keys(pkg.dependencies || {}).length, 0);
+  assert.equal(pkg.dependencies['@supabase/supabase-js'], '2.118.0');
 });
-test('legacy portal offers direct contact and no account forms', async () => {
-  const portal = await readFile('portal.html','utf8');
-  assert.match(portal, /mailto:/); assert.match(portal, /index.html#contact/);
-  assert.doesNotMatch(portal, /<form|<script/);
+test('account page has safe hidden forms and links', async () => {
+  const portal=await readFile('portal.html','utf8');
+  assert.match(portal,/id="dashboard" hidden/);
+  assert.match(portal,/form-action 'self'/);
+  assert.match(portal,/meta name="referrer" content="no-referrer"/);
+  assert.match(portal,/id="recovery-logout"/);
 });
 test('clean build removes previously published private documents', async () => {
   await mkdir('dist/assets', {recursive:true});
   await writeFile('dist/assets/SP-Raja-CV.pdf','obsolete document');
   await writeFile('dist/config.json','obsolete configuration');
   execFileSync(process.execPath,['scripts/build.mjs']);
-  assert.deepEqual((await readdir('dist')).sort(), ['.nojekyll','index.html','portal.html','script.js','style.css']);
+  assert.deepEqual((await readdir('dist')).sort(), ['.nojekyll','config.json','index.html','portal.css','portal.html','portal.js','script.js','style.css']);
 });
 
 test('email draft encodes visitor text and never claims it was sent', async () => {

@@ -1,56 +1,77 @@
-# SP Raja — Personal Portfolio
+# SP Raja — Personal Portfolio & Visitor Accounts
 
-A static personal website presenting education, experience, projects, six services and direct contact details. Customer accounts, saved enquiries, Supabase, Resend and the downloadable CV have been removed. No API keys, database, paid API, subscription or third-party runtime package is required by this website.
+Personal portfolio with real Supabase Free authentication for exploration. The CV remains removed. No paid upgrade, email provider, SMS, payment service or subscription is configured by this change.
 
-## Open the website
+## Features
 
-Open `index.html` in your browser. All visual assets are inline or local. The contact form opens a draft in the visitor's email application; the visitor must press Send there. No message is sent automatically or stored on this website. Without JavaScript, direct email and telephone links remain available.
+- Register with name, email and password; verify email and resend verification.
+- Log in and log out with real Supabase sessions.
+- Request an account recovery email, follow the link and set a new password.
+- Visitor dashboard: own display name, email, verification status, joining date and project/service/contact links.
+- Edit display name in your own account.
+- Existing public portfolio and email-draft contact form remain accessible without an account.
 
-## Build and check (optional Node.js 22 or newer)
+## Important: free personal exploration
+
+The existing Supabase organisation was confirmed on the Free plan on 28 October 2026. The built-in Supabase email service is intended for testing, normally sends only to authorised project-team addresses, and currently allows two emails per hour. Use your Supabase organisation-member email when exploring verification and password recovery. Do not add untrusted people to your Supabase team merely to allow website registration.
+
+This is not unrestricted public email delivery. No paid mail provider has been enabled. Free projects can pause after inactivity and have usage limits; no paid plan is required by this application. No genuine account creation or recovery emails were sent during automated verification.
+
+## Project and callbacks
+
+Project: `fqvftoegqpmakumfagzk` (SP Raja Personal Website). `config.json` contains only its public publishable key, which is designed for browsers. Never put a service-role key or other secret here.
+
+In Supabase Authentication → URL Configuration, allow these exact URLs:
+
+- `https://rajakokila-p.github.io/index.html/portal.html`
+- `https://rajakokila-p.github.io/index.html/portal.html?recovery=1`
+
+Both URLs were submitted through the dashboard during setup, but the browser connection stopped responding before the saved state could be confirmed. Verify they appear in the list before testing email flows. The existing Site URL and existing callback for the separate personal Jarvis site were preserved. Keep email confirmation enabled and retain email templates that honour the requested redirect URL (normally `{{ .ConfirmationURL }}`). Shared-project template settings have not been changed.
+
+## Run and build
+
+Node.js 22 or newer:
 
 ```sh
+npm ci
 npm test
 npm run build
 npm run preview
 ```
 
-No `npm install` is needed for these commands. Preview: http://127.0.0.1:4173. The clean build copies only public website files into `dist`. It removes stale files, including previously built CV PDFs.
+Open http://127.0.0.1:4173. For email callbacks, use the published HTTPS URL above. Local callback URLs must be explicitly configured if you want local email-flow testing.
 
-## Replace an existing GitHub Pages deployment
+The build bundles the official Supabase SDK. `portal.js` at repository root is the generated bundle, committed so GitHub Pages branch publishing also works. Do not hand-edit it; edit `src/` and rebuild. `dist/` is the clean output for artifact publishing. The build excludes all CV files and server secrets.
 
-1. Replace the old repository contents with this project, including `.github/workflows/pages.yml` and `.nojekyll`. Delete obsolete backend folders, configuration, dependency lockfiles, portal scripts/styles, and `assets/SP-Raja-CV.pdf`; copying new files over old ones alone will not remove them.
-2. In repository Settings → Pages, select GitHub Actions as the publishing source for the included workflow.
-3. Push to `main`, then check the completed deployment. The workflow needs no backend variables or secrets and installs no npm packages.
-4. Check the published homepage and `portal.html`. Verify that `/assets/SP-Raja-CV.pdf` returns 404 and the CV section is absent.
+## Publishing
 
-For a no-build upload to a static host, use the included `dist` contents. Use a free hosting option within its free limits; no paid hosting or custom domain is needed by the application. No hosting account or billing plan has been changed by this update.
-
-Removing the current PDF does not erase it from an existing Git history, old deployment, downloaded copy or search cache. This ZIP cannot remove those external copies. Existing Supabase data and the Supabase project have not been deleted; this website no longer connects to them.
+The workflow installs pinned dependencies with `npm ci`, runs tests and builds the site. GitHub Pages can publish the repository root (using the committed bundle) or the workflow's `dist` artifact. Keep `config.json`, `portal.js`, `portal.css` and `portal.html` together.
 
 ## Fifteen development areas
 
-| Area | Current implementation / acceptance criterion |
+| Area | Evidence / acceptance criterion |
 | --- | --- |
-| 1. Requirements | P0: no backend calls, API credentials or CV. P1: all six services and direct contact remain usable. |
-| 2. Design | Existing portfolio design retained. Responsive CSS retained; browser verification is pending because Chromium was unavailable. |
-| 3. Architecture | Static HTML/CSS/JavaScript; see ARCHITECTURE.md. |
-| 4. Database/backend | Intentionally absent. No account or enquiry database. |
-| 5. API | Intentionally absent. Email uses a mailto link and the visitor's email application. |
-| 6. Coding rules | See AGENTS.md. |
-| 7. README | Setup, publishing, limitations and acceptance criteria documented here. |
-| 8. Implementation plan | Remove paid-service dependencies and CV → test static output → browser checks → owner publishes and checks live URL. Removal and static test gates complete; browser and live gates pending. |
-| 9. Setup | Open HTML directly or use the dependency-free Node build/preview. |
-| 10. Features | Portfolio, education, experience, projects, services, mobile navigation, contact draft and social links. |
-| 11. Security | No login, credentials or stored visitor data. Form hidden until JavaScript is ready, preventing accidental GET submissions. |
-| 12. MCP | Not needed by the site. |
-| 13. Integrations | Outbound social/project links and email/telephone handlers only; no automatic third-party calls. |
-| 14. Testing/QA | See TESTING.md for fresh results and reproducible commands. |
-| 15. Debugging | See troubleshooting below. |
+| 1. Requirements | Real register/login/logout/recovery/dashboard; no CV or paid upgrades. |
+| 2. Design | Existing navy/cream design, responsive account panels, form labels and keyboard focus. |
+| 3. Architecture | Static portfolio plus Supabase Auth; see ARCHITECTURE.md. |
+| 4. Database/backend | Supabase's existing Auth service; no new tables or schema changes. |
+| 5. API | Official SDK Auth methods documented in ARCHITECTURE.md. |
+| 6. Coding rules | AGENTS.md keeps the free-plan and CV-removal constraints. |
+| 7. README | Setup, email limits, deployment and troubleshooting. |
+| 8. Implementation plan | Implement → isolated tests → build → publish → owner verifies real email flow. |
+| 9. Setup | Pinned packages and npm lockfile; public-only configuration. |
+| 10. Features | Public portfolio plus personal visitor account features. |
+| 11. Authentication/security | Server-verified user, verified email gate, tab-scoped session storage, safe text rendering. |
+| 12. MCP | Development tooling only; not required by visitors. |
+| 13. Integrations | Supabase Free Auth; no Resend, payments or notification worker. |
+| 14. Testing/QA | 15 passing automated checks and build; see TESTING.md for limits. |
+| 15. Debugging | Explicit rate-limit, unsupported-email, invalid-login and connection messages. |
 
 ## Troubleshooting
 
-- No email application opens: copy `sarvamsky@gmail.com` into your preferred email service. Preparing a draft is not confirmation of delivery.
-- CV still visible online: confirm that the new deployment succeeded, remove the old PDF from the repository, and refresh the browser cache.
-- Old account page appears: check that `portal.html` has been replaced and the deployment uses the new files.
-- Navigation fails: confirm `script.js` is beside `index.html`; direct contact links remain available without JavaScript.
-- External links: the OilPulse card links to the GitHub profile and is labelled accordingly. A direct OilPulse repository URL was not supplied or guessed.
+- No verification/recovery email: use your authorised team address, check spam, wait for the email limit to reset, and check the redirect URLs and templates above.
+- Recovery opens the wrong site: ensure the two exact portfolio callbacks are saved; the shared project's default Site URL belongs to the other site.
+- Account connection fails: check whether the free project needs resuming and whether the public configuration and portal bundle are deployed.
+- Login fails: use Forgot password or resend verification. The dashboard is not shown for an unverified or rejected session.
+- No mail application opens for a contact enquiry: email `sarvamsky@gmail.com` manually. A prepared draft is not a sent message.
+- CV removal applies to the current site/files; earlier repository history and downloaded copies are not erased.
