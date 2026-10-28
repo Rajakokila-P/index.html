@@ -20,6 +20,7 @@ const serviceSelect = document.querySelector('#enquiry-service');
 document.querySelectorAll('.service-enquiry').forEach(link => {
   link.addEventListener('click', () => { serviceSelect.value = link.dataset.service; });
 });
+document.querySelector('#enquiry-form').hidden = false;
 document.querySelector('#enquiry-form').addEventListener('submit', event => {
   event.preventDefault();
   const form = event.currentTarget;

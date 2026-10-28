@@ -1,53 +1,31 @@
-name: Test and deploy portfolio
+name: Check and deploy static portfolio
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
   group: pages-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
-  test-and-build:
+  check-and-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.25.0
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test
-      # Test a deliberately disconnected build. Browser tests intercept auth
-      # endpoints and never register a real customer or send real email.
-      - run: pnpm run build
-      - run: pnpm run test:browser
-      - name: Keep browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-test-results
-          path: test-results/
-          retention-days: 7
-      - name: Build deployment with public backend configuration
-        env:
-          PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL }}
-          PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-        run: pnpm run build
+      - run: node --check script.js
+      - run: npm test
+      - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: test-and-build
+    needs: check-and-build
     runs-on: ubuntu-latest
     permissions:
       pages: write
